@@ -7,30 +7,51 @@
 using namespace std;
 class Mailbox
 {
-    public:
-        Mailbox(key_t);
-       ~Mailbox();
-    
-    //Send and receive chunks of the image   
-	void send(int, char*);
+  public:
+    // structure to message a package
+    struct mesg_buffer
+    {
+        long mtype;
+        char data[128];
+    };
+
+    // structure to message a name of file
+    struct mesg_name
+    {
+        long mtype;
+        long totalPack;
+        char name[62];
+        int id;
+    };
+
+    // struct for message ack
+    struct mesg_ack
+    {
+        long mtype;
+        int boolean;
+    };
+
+    Mailbox(key_t);
+    ~Mailbox();
+
+    //Send and receive chunks of the image
+    void send(int, char *);
 	vector<char> receive(int);
-	
-	//Send and receive the name of the file
-	void sendName(const char*,int,long);
+    mesg_buffer receiveStruct(int, bool);
+
+    //Send and receive the name of the file
+    void sendName(const char *, int, long);
 	string receiveName();
-	
-	//Send and receive ack
-	void sendAck(int,int);
-	int receiveAck(int,bool);
+    mesg_name receiveNameStruct(bool);
 
+    //Send and receive ack
+    void sendAck(int);
+	int receiveAck(int,int);
+    mesg_ack receiveAckStruct(int, bool);
 
-   private:
-	int mailboxId;
-	int key;
-
-		
+  private:
+    int mailboxId;
+    int key;
 };
-
-
 
 #endif // Mailbox_H
