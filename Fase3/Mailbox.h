@@ -20,8 +20,8 @@ class Mailbox
 	string receiveName();
 	
 	//Send and receive ack
-	void sendAck(int);
-	int receiveAck(int,int);
+	void sendAck(int,int);
+	int receiveAck(int,bool);
 
 
    private:

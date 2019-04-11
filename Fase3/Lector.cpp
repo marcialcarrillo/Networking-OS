@@ -18,7 +18,7 @@
 
 using namespace std;
 
-void contratista(string address, int id, Mailbox &chunkMail, Mailbox &handshakeMail)
+void contratista(string address, int id, Mailbox &mail)
 {
 	
 	char name[63];
@@ -36,9 +36,10 @@ void contratista(string address, int id, Mailbox &chunkMail, Mailbox &handshakeM
 	//cout << "I need to send " << extraPacketsToSend << " extra packets" << endl;
 
 	//Sends the name to the emisor
-	handshakeMail.sendName(name, id, totalBytes);
+	mail.sendName(name, id, totalBytes);
+
 	//Waits for the ack(2)
-	handshakeMail.receiveAck(2, 0);
+	mail.receiveAck(2, 0);
 
 	char buffer[BUFFER_SIZE];
 	char sub_buffer[SUB_BUFFER_SIZE];
@@ -53,7 +54,7 @@ void contratista(string address, int id, Mailbox &chunkMail, Mailbox &handshakeM
 
 			memcpy(sub_buffer, buffer + (i * SUB_BUFFER_SIZE), SUB_BUFFER_SIZE);
 			mytest++;
-			chunkMail.send(id, sub_buffer);
+			mail.send(id, sub_buffer);
 		}
 	}
 
@@ -61,16 +62,17 @@ void contratista(string address, int id, Mailbox &chunkMail, Mailbox &handshakeM
 	{
 		memcpy(sub_buffer, buffer + (i * SUB_BUFFER_SIZE), SUB_BUFFER_SIZE);
 		//cout << "Extra packet number " << extraPacketsToSend << " is of size: " <<  sizeof(sub_buffer) << endl;
-		chunkMail.send(id, sub_buffer);
+		mail.send(id, sub_buffer);
 
 		//output_file.write(sub_buffer, SUB_BUFFER_SIZE);
 	}
 
 	//waits for the ack(3) from the emisor
-	handshakeMail.receiveAck(3, 0);
+	int thread_id = mail.receiveAck(3, 0);
+	cout << "received thread_id = " << thread_id << endl;
 
 	//sends the ack(1)
-	handshakeMail.sendAck(1);
+	mail.sendAck(1,0);
 
 	input_file.close();
 }
@@ -99,10 +101,7 @@ int main(int x, char *argv[])
 
 	//Creates the mailboxes
 	key_t key = 0xa62074;
-	Mailbox handshakeMail = Mailbox(key);
-
-	key_t key2 = 0xb62074;
-	Mailbox chunkMail = Mailbox(key2);
+	Mailbox mail = Mailbox(key);
 
 	int contratistaId = 2019;
 	string address = "";
@@ -116,7 +115,7 @@ int main(int x, char *argv[])
 		totalImages++;
 		if (totalWorkers == 2) //If theres 2 contractors active, wait for one of them to finish before creating another one
 		{
-			handshakeMail.receiveAck(1, 0); //Waits the ack(1)
+			mail.receiveAck(1, 0); //Waits the ack(1)
 			totalWorkers--;
 			workersDone++;
 		}
@@ -125,7 +124,7 @@ int main(int x, char *argv[])
 		forkStatus = fork(); //Creates a new process
 		if (forkStatus == 0) //If this is not the main process
 		{
-			contratista(address, contratistaId, chunkMail, handshakeMail);
+			contratista(address, contratistaId, mail);
 			exit(0);
 		}
 
@@ -136,15 +135,14 @@ int main(int x, char *argv[])
 	while (workersDone < totalImages) //Waits for all the contractors to finish before deleting the mailboxes
 	{
 
-		handshakeMail.receiveAck(1, 0);
+		mail.receiveAck(1, 0);
 		workersDone++;
 	}
 
 	//Sends ack(5)
-	handshakeMail.sendAck(5);
+	mail.sendAck(5,0);
 
 	//Deletes the queues
-	msgctl(msgget(0xb62074, 0666 | IPC_CREAT), IPC_RMID, NULL);
 	msgctl(msgget(0xa62074, 0666 | IPC_CREAT), IPC_RMID, NULL);
 
 	//Closes the file

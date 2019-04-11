@@ -29,7 +29,7 @@ struct mesg_name
 struct mesg_ack
 {
 	long mtype;
-	int boolean;
+	int thread_id;
 };
 
 Mailbox::Mailbox(key_t key)
@@ -117,12 +117,12 @@ string Mailbox::receiveName()
 	return copy;
 }
 
-void Mailbox::sendAck(int type)
+void Mailbox::sendAck(int type, int thread_id)
 {
 
 	mesg_ack package;
 	package.mtype = type;
-	package.boolean = 1;
+	package.thread_id = thread_id;
 	if (msgsnd(this->mailboxId, &package, sizeof(mesg_ack), 0) == -1)
 	{
 		//perror("msgsnd error");
@@ -131,13 +131,13 @@ void Mailbox::sendAck(int type)
 }
 //if variable block is set to 1 and theres no message with the variable type then it wont wait for one. Otherwise it will wait for a message
 //Return 1 if theres no message to receive. otherwise return 0
-int Mailbox::receiveAck(int type, int block)
+int Mailbox::receiveAck(int type, bool block)
 {
 	int id = msgget(this->key, 0666 | IPC_CREAT);
 	mesg_ack recv;
 	int returnValue = 0;
 
-	if (block == 1)
+	if (block)
 	{
 		if (msgrcv(id, &recv, sizeof(mesg_ack), type, IPC_NOWAIT) == -1)
 		{
@@ -146,8 +146,9 @@ int Mailbox::receiveAck(int type, int block)
 				//perror("msgrcvNonBlock");
 				exit(EXIT_FAILURE);
 			}
-			returnValue = 1;
-		}
+			returnValue = -1;
+			return returnValue;
+		}		
 	}
 	else
 	{
@@ -160,6 +161,6 @@ int Mailbox::receiveAck(int type, int block)
 			}
 		}
 	}
-
+	returnValue = recv.thread_id;
 	return returnValue;
 }
