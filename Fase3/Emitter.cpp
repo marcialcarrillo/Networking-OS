@@ -1,6 +1,4 @@
-#include <iostream>
-#include <Mailbox.h>
-#include <thread>
+#include "Mailbox.h"
 
 using namespace std;
 
@@ -11,7 +9,8 @@ int main ()
 
     while(1)
     {
-        mail.;
+        mail.receiveStruct(5,1);
+        break;
 
     //retrieve a mail
 
