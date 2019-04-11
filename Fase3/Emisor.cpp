@@ -34,7 +34,8 @@ void child(threadData_t childsCopiedData)
 
 	//Open file
 
-	string fileName = childsCopiedData.name.substr(childsCopiedData.name.find_last_of("/") + 1);
+	string fileName = "./output/";
+	fileName += childsCopiedData.name.substr(childsCopiedData.name.find_last_of("/") + 1);
 	ofstream output_file(fileName, ios::binary);
 
 	int totalPackets = ceil((double)childsCopiedData.totalBytes / (double)128);
