@@ -51,10 +51,20 @@ int main()
         return 1;
     }
 
-    //
+    // Empezando por la diferenciacion de los paquetes que se van a recibir
+    read(CreatedSocket, package, sizeof(package) - 1);
+    if(package[0] == 'o') {
+        puts("one\n");
+    } else {
+        puts("two\n");
+    }
+    //Ahora recibiendo los verdaderos paquetes
     while ((n = read(CreatedSocket, package, sizeof(package) - 1)) > 0)
     {
+        printf("n = %d\n", n);
         package[n] = 0;
+
+        // Put what it receives in the stdout but not printed yet
         if (fputs(package, stdout) == EOF) // sends the contents of the package to the terminal stdout of the client
         {
             printf("\nStandard output error");

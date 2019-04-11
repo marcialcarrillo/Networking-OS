@@ -10,50 +10,47 @@
 #include <netinet/in.h> //contains constants and structures needed for internet domain addresses
 #include <stdio.h>
 
+
 // This server sends data to the client
-
-int toInteger(char *data)
-{
-    int result = 0, multiplier = 1;
-    int index = 0;
-    while (data[index] != '\0')
-    {
-        index++;
-        multiplier *= 10;
-    }
-    multiplier /= 10;
-
-    for (int i = 0; i < index; ++i)
-    {
-        //printf("(%c) -- result(%d)\n", data[i], result);
-        result += multiplier * (data[i] - '0');
-        multiplier /= 10;
-    }
-    return result;
-}
 
 int getData()
 {
-    char line[256], finalLine[256];
-    FILE *file;
-    file = fopen("serverData.txt", "r");
+    char line[256], finalLine[256];      // donde se guarda la linea del file y el producto final de lo que se encuentra en el archivo
+    FILE *file;                          // Archivo de datos de ip
+    file = fopen("serverData.txt", "r"); // Para averiguar la ip
 
-    //For the ip
+    //For the ip --- getting the ip from the file
     fgets(line, sizeof(line), file);
-    memset(finalLine, '\0', sizeof(finalLine));
+    memset(finalLine, '\0', sizeof(finalLine)); // llena de '\0' el buffer
     strncpy(finalLine, line, strlen(line) - 1);
-    //printf("(%s)\n", finalLine);
 
-    int port = toInteger(finalLine);
+    int port = atoi(finalLine); // char* to integer
 
     fclose(file);
     return port;
 }
 
+/*
+
+#include <netinet/in.h>
+
+struct sockaddr_in {
+    short            sin_family;   // e.g. AF_INET
+    unsigned short   sin_port;     // e.g. htons(3490)
+    struct in_addr   sin_addr;     // see struct in_addr, below
+    char             sin_zero[8];  // zero this if you want to
+};
+
+struct in_addr {
+    unsigned long s_addr;  // load with inet_aton()
+};
+
+*/
+
 int main()
 {
-    time_t clock;
-    char package[1025]; // This is what is sended between client and server
+    time_t clock;       // variable that stores time time from the ISO-C
+    char package[1025]; // This is what is sended and where things get stored between client and server
     int clientListening = 0, clientConnection = 0;
     struct sockaddr_in ipOfServer;
 
@@ -61,9 +58,10 @@ int main()
     port = getData();
 
     /* 
-        Creating a socket - AF_INET -> because is ipv4 address 
-        We use SOCK_STREAM because we are using TCP protocol
-        The 0 is so that the kernel uses the default protocol
+        Creating a socket
+        "AF_INET" ------> because is ipv4 address 
+        "SOCK_STREAM" --> because we are using TCP protocol
+        "0" ------------> this is so that the kernel uses the default protocol
     */
     clientListening = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -71,7 +69,8 @@ int main()
     memset(&ipOfServer, '0', sizeof(ipOfServer));
     memset(package, '0', sizeof(package));
 
-    // Setting important data to the struture ipOfServer
+
+    // Setting important data to the struture ipOfServer in order to listen according to the port and type of connection
     ipOfServer.sin_family = AF_INET;
     ipOfServer.sin_addr.s_addr = htonl(INADDR_ANY); //converts the unsigned integer hostlong from host byte order to network byte order.
     ipOfServer.sin_port = htons(port);              // this is the port number of running server
@@ -90,17 +89,40 @@ int main()
     while (1)
     {
         //fputs(clientConnection, file);
-        printf("Server running ....Waiting for some Client to call me ....\n");    // whenever a request from client came. It will be processed here.
-        clientConnection = accept(clientListening, (struct sockaddr *)NULL, NULL); // This returns the descriptor once the server is hit by the client
+        printf("Server running ....Waiting for some Client to contact me ....\n");
+
+        // This returns the descriptor once the server is hit by the client
+        clientConnection = accept(clientListening, (struct sockaddr *)NULL, NULL); 
 
         clock = time(NULL);
         snprintf(package, sizeof(package), "%.24s\r", ctime(&clock)); // Concatenating the message to the package
-        write(clientConnection, package, strlen(package));            // Sending the package to the client trough its connection
+        //write(clientConnection, package, strlen(package));            // Sending the package to the client trough its connection
 
-        close(clientConnection); //closes a file descriptor, so that it no longer refers to any file and may be reused.
+        //Lo siguiente corresponde al envio de la cantidad de paquetes que van a llegarle proximamente
+        snprintf(package, sizeof(package), "%s", "one");
+        write(clientConnection, package, strlen(package));
+        //Sending several times to the client ---- va a corresponder a la cantidad de paquetes que implican la imagen
+        for(int i = 0; i < 5; ++i) {
+            snprintf(package, sizeof(package), "%.24s\r", ctime(&clock)); 
+            write(clientConnection, package, strlen(package));
+            sleep(1);
+        }
+
+
+        //Lo siguiente corresponde al envio de la cantidad de paquetes que van a llegarle proximamente
+        snprintf(package, sizeof(package), "%s", "two");
+        write(clientConnection, package, strlen(package));
+        //Sending several times to the client ---- va a corresponder a la cantidad de paquetes que implican la imagen
+        for(int i = 0; i < 5; ++i) {
+            snprintf(package, sizeof(package), "%.24s\r", ctime(&clock)); 
+            write(clientConnection, package, strlen(package));
+            sleep(1);
+        }
+
+        close(clientConnection); // Closes a file descriptor, so that it no longer refers to any file and may be reused.
         sleep(1);                // Makes the server went to sleep for 1 second to also avoid the server eat all my cpu
 
-        puts(package);
+        //puts(package);
     }
     return 0;
 }
