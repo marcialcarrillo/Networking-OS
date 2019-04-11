@@ -1,0 +1,29 @@
+Las siguientes son las deciciones respetivas al problema planteado:
+
+    Consultas:
+        El contador no envia directamente al lector el resultado, sino que lo envia a una estructura de datos compartida.
+        
+
+    Defición de palabra:
+        Una palabra constituye un conjunto de caracteres, diferentes al espacio, que tengan un espacio o un cambio de linea al final. 
+        Una oración constituye las palabras que se encuentran antes de un cambio de linea.
+        El programa devuelve los resultados una vez que el usuario ingresa el numero 1 y un cambio de linea.
+        
+Pseudocódigo lector:
+
+    Mientras no reciva un 1 y enter.
+        Se lee una oracion.
+            Almacena la oración en una estructura de datos privada.
+            Si el contador puede recibir una oración.
+                Envía, por medio de una estructura de datos compartida, la oración.
+            Si el contador ha dado una repuesta.
+                Se almacena la misma.
+
+
+Pseudocódigo Contador:
+
+    Espera si hay una oración en la estructura de datos.
+        Cuenta las palabras en la oracion.
+        Se crea un retraso configurable 
+        Almacena la respuesta en la estructura compartida.
+
