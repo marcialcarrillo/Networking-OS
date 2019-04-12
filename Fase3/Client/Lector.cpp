@@ -16,8 +16,9 @@
 #define BUFFER_SIZE 512
 #define SUB_BUFFER_SIZE 128
 
-//Debug couts
-#define DEBUG //comment to turn off debug messages
+//************************ VERBOSE MODE ***********************************************//
+
+#define DEBUG //comment this line only to turn off debug messages
 
 #ifdef DEBUG
 #define DEBUG_MSG(str) do { std::cout << str << std::endl; } while( false )
@@ -27,6 +28,8 @@
 
 //Example debug message:
 //DEBUG_MSG("Hello" << ' ' << "World!" << 1 );
+
+//************************ VERBOSE MODE ***********************************************//
 
 using namespace std;
 
@@ -94,13 +97,14 @@ void contratista(string address, int id, Mailbox& chunkMail,Mailbox& handshakeMa
 
 	//waits for the ack(id) 
 	handshakeMail.receiveAck(id,false);
-	cout<<"Se termino id "<<id<<endl;
+	DEBUG_MSG("Received successful completion of image id " << id << " (via Ack)");
 
 	//sends the ack(1)
 	handshakeMail.sendAck(1);
 	
 
 	input_file.close();
+	DEBUG_MSG("Contractor closed sucessfully");
 
 }
 
@@ -157,7 +161,7 @@ while(file >> address)//While theres addresses to read
   forkStatus = fork();//Creates a new process
   if(forkStatus == 0)//If this is not the main process 
   {
-		DEBUG_MSG("Se creo id " << contratistaId);
+		DEBUG_MSG("Created ID: " << contratistaId);
     contratista(address,contratistaId,chunkMail,handshakeMail);
     exit(0);
   }
@@ -173,12 +177,13 @@ while(workersDone < totalImages)//Waits for all the contractors to finish before
 {
 	
 	handshakeMail.receiveAck(1,0);
+	DEBUG_MSG("received ACK 1: a contractor finished its work");
 	workersDone++;
 
 }
 
-//Sends ack(5)
-handshakeMail.sendAck(5);
+//Sends ack(5) UNNEDDED IN FASE3
+//handshakeMail.sendAck(5);
 
 //Deletes the queues
 msgctl(msgget(0xb62074,0666 | IPC_CREAT), IPC_RMID, NULL); 
@@ -192,5 +197,7 @@ if (remove("addresses.ini") != 0)
 		perror("File deletion failed");
 
 return 0;
+
+DEBUG_MSG("Reader exited successfully");
 
 }

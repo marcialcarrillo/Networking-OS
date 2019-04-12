@@ -12,6 +12,7 @@
 #include <math.h>
 #include <vector>
 #include <pthread.h>
+#include "Server.h"
 
 using namespace std;
 
