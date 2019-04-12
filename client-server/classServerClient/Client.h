@@ -23,7 +23,7 @@ class Client
     bool stop = true;
 
     void client_read();
-    void client_send(char *package, int package_size);
+    void client_send(const void* package, int package_size);
 };
 
 Client::Client(/* args */)
@@ -66,7 +66,7 @@ void Client::client_read()
     }
 }
 
-void Client::client_send(char *package, int package_size)
+void Client::client_send(const void* package, int package_size)
 {
     send(sock, package, package_size, 0);
     printf("cliente envió un paquete\n");

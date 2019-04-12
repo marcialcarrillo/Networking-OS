@@ -11,15 +11,20 @@ struct str_1 {
 int main()
 {
     Server server;
-    char *message = "hola desde el server";
+    //char *message = "hola desde el server";
+
+    #pragma pack(1)
+    struct mesg_buffer
+    {
+        long mtype;
+        char data[128];
+    } message;
+    #pragma pack(0)
     
     // for(int i = 0; i < 5; ++i)
-    while(1)
-    {
-        server.server_read(structure_one.new_buffer, structure_one.new_buffer_size);
-        cout << structure_one.new_buffer << endl;
-        cout << structure_one.new_buffer_size << endl;
-    }
+   
+        server.server_read(&message, sizeof(message));
+        cout << "mtype is " << message.mtype << endl;
 
     //server.server_send(message, 20);
     return 0;

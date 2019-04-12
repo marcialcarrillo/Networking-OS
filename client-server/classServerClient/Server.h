@@ -21,8 +21,10 @@ class Server
 
     bool stop = true;
 
-    void server_read(char* new_buffer, int new_buffer_size);
+    void server_read(void* new_buffer, int new_buffer_size);
     void server_send(char *package, int package_size);
+    void simple_read(char* new_buffer, int new_buffer_size);
+    void ssimple_send(char *package, int package_size);
 };
 
 Server::Server()
@@ -66,7 +68,17 @@ Server::~Server()
 {
 }
 
-void Server::server_read(char* new_buffer, int new_buffer_size)
+void Server::simple_read(char* new_buffer, int new_buffer_size)
+{
+    //this->valread = read(new_socket, buffer, 1024);
+    this->valread = read(new_socket, new_buffer, new_buffer_size);
+    if (valread)
+    {
+        printf("%s\n", buffer);
+    }
+}
+
+void Server::server_read(void* new_buffer, int new_buffer_size)
 {
     //this->valread = read(new_socket, buffer, 1024);
     this->valread = read(new_socket, new_buffer, new_buffer_size);
@@ -81,3 +93,5 @@ void Server::server_send(char *package, int package_size)
     send(new_socket, package, package_size, 0);
     printf("servidor envió un paquete\n");
 }
+
+
