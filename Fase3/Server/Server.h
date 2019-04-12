@@ -61,6 +61,7 @@ Server::Server()
         perror("accept");
         exit(EXIT_FAILURE);
     }
+
 }
 
 Server::~Server()

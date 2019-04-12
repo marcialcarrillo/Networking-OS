@@ -13,5 +13,6 @@ int main()
     Server server;
     buff.mtype = 777777;
     server.server_send(&buff, sizeof(buff));
+    server.server_read(&buff,sizeof(buff));
     return 0;
 }

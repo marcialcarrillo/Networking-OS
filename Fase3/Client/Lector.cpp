@@ -79,6 +79,7 @@ void contratista(string address, int id, Mailbox& chunkMail,Mailbox& handshakeMa
 	      memcpy(sub_buffer,buffer+(i*SUB_BUFFER_SIZE),SUB_BUFFER_SIZE);	
 	      mytest++;
 	      chunkMail.send(id,sub_buffer);  
+	      	DEBUG_MSG("Chunk"<<id);
  	      
 	  }
 
@@ -89,14 +90,14 @@ void contratista(string address, int id, Mailbox& chunkMail,Mailbox& handshakeMa
       memcpy(sub_buffer,buffer+(i*SUB_BUFFER_SIZE),SUB_BUFFER_SIZE);
 			//cout << "Extra packet number " << extraPacketsToSend << " is of size: " <<  sizeof(sub_buffer) << endl;
 			chunkMail.send(id,sub_buffer);
-
+DEBUG_MSG("Chunk"<<id);
       //output_file.write(sub_buffer, SUB_BUFFER_SIZE);
   }
 
 
 
 	//waits for the ack(id) 
-	handshakeMail.receiveAck(id,false);
+ 	handshakeMail.receiveAck(id,false);
 	DEBUG_MSG("Received successful completion of image id " << id << " (via Ack)");
 
 	//sends the ack(1)

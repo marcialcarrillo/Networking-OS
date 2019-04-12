@@ -14,5 +14,6 @@ int main()
     Client client;
     client.client_read(&buff, sizeof(buff));
     cout << "mtype is: " << buff.mtype << endl;
+    client.client_send(&buff,sizeof(buff));
     return 0;
 }

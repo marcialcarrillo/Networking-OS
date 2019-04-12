@@ -15,6 +15,8 @@
 #include "Server.h"
 #include "Mailbox.h"
 
+using namespace std;
+
 //************************ VERBOSE MODE ***********************************************//
 
 #define DEBUG //comment this line only to turn off debug messages
@@ -27,11 +29,10 @@
 
 //Example debug message:s
 //DEBUG_MSG("Hello" << ' ' << "World!" << 1 );
-//DEBUG_MSG("");
+//DEBUG_MSG("")
 
 //************************ VERBOSE MODE ***********************************************//
 
-using namespace std;
 
 struct threadData{
 	
@@ -41,19 +42,19 @@ struct threadData{
 	long totalBytes;
 	int handshakeMail;
 	int chunkMail;
-  Server* server;
+   Server* server;
 	
 };
 
 void* child(void* data)
 {
+	
 	threadData* childsCopiedData = (threadData*) data;
 	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
 	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
-	DEBUG_MSG("Child " << childsCopiedData->id << " successfully started");
 	
 	//Open file
-	
+/*	
 	string fileName = childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/")+1);
 	ofstream output_file(fileName, ios::binary);
 	
@@ -63,8 +64,7 @@ void* child(void* data)
 	vector<char> retrievedPacket;
 	vector<char> packetToAppend;
 	//char * myTemp;
-	
-	DEBUG_MSG("Starting child " << childsCopiedData->id << " main packet writting loop");
+
 	for(int packageCounter= 0 ; packageCounter < numberOfComplete512BytesPackets ; packageCounter++) //loop until there is less or equal to 4 packets
 	{
 		Mailbox::mesg_buffer msg = chunkMail.receive(childsCopiedData->id,true); //retrives an initial packet
@@ -103,67 +103,33 @@ void* child(void* data)
 	int totatLeftoverBytes = ((leftOver128BytesPackets - 1) * 128) + lastPacketBytes; //calcultate how many bytes in TOTAL are left to write
 	output_file.write(retrievedPacket.data(), totatLeftoverBytes); //write them to file
 
-	DEBUG_MSG("Child " << childsCopiedData->id << " packet writting finished");
+*/
 	//Sends ack(id)
-	handshakeMail.sendAckEmisor(childsCopiedData->id);
+//	handshakeMail.sendAckEmisor(childsCopiedData->id);
 
 	//Exit file
-	output_file.close();
-	DEBUG_MSG("Child " << childsCopiedData->id << " about to delete inherited data and exit");
-	delete(childsCopiedData);
+//	output_file.close();
+	
+	//delete(childsCopiedData);
 	
 	return NULL;
 }
 
-void* ReadTCP(void* data)
-{
-	DEBUG_MSG("ReadTCP thread started");
-  threadData* childsCopiedData = (threadData*) data;
-  Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
-  Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
-  
-  while(1)
-  {
-    char header[1];
-    childsCopiedData->server->server_read(&header,sizeof(header));
 
-    if(header[0] == 0)
-    {
-			DEBUG_MSG("ReadTCP received a valid namePacket with title " << childsCopiedData->name);
-      Mailbox::mesg_name namePacket;
-      childsCopiedData->server->server_read(&namePacket,sizeof(namePacket));
-      handshakeMail.sendName(namePacket.name,namePacket.id,namePacket.totalPack);
-			DEBUG_MSG("ReadTCP forwarded " << childsCopiedData->name << " to the mailbox");
-  	}
-    else
-    {
-      Mailbox::mesg_buffer dataPacket;
-      childsCopiedData->server->server_read(&dataPacket, sizeof(dataPacket));
-      chunkMail.send(dataPacket.mtype, dataPacket.data);
-    }
-
-  }  
-  
-  return NULL;
-}
 
 void* SendAcks(void* data)
 {
-	DEBUG_MSG("SendAcks thread started");
   threadData* childsCopiedData = (threadData*) data;
   Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
   Mailbox::mesg_ackEmisor ackPacket;
   
   while(1)
   {
-		DEBUG_MSG("SendAcks waiting for ACK: special ACK that declares an image written correctly");
     ackPacket = handshakeMail.receiveAckEmisor();
     if(ackPacket.boolean != 1)
     {
-			DEBUG_MSG("SendAcks received a valid ack");
        childsCopiedData->server->server_send(&ackPacket, sizeof(ackPacket)); //the server wil ONLY send ackPackets, because of this no header is required, they will all be casted into an ack struct
-			DEBUG_MSG("SendAcks forwarded the ack");
-		}
+    }
    
   }
    return NULL;
@@ -174,20 +140,27 @@ void* SendAcks(void* data)
 int main()
 {	
 	//Creates the mailboxes
-	key_t key = 0xa62074;
+	key_t key = 0xc62074;
 	Mailbox handshakeMail = Mailbox(key);
 
-	key_t key2 = 0xb62074;
+	key_t key2 = 0xd62074;
 	Mailbox chunkMail = Mailbox(key2); 
 
+
+	//Start Tcp Socket
+    Server* server = new Server();
+    
 		threadData* TCPForwardingData = new threadData();
 		TCPForwardingData->handshakeMail = key;
 		TCPForwardingData->chunkMail = key2;
+		TCPForwardingData->server = server;
+	
+
 	
 	//Start the TCP forwarding thread (to mailboxes)
-    pthread_t TCPForwarding;
+   /* pthread_t TCPForwarding;
     pthread_create(&TCPForwarding,NULL,ReadTCP,(void*)TCPForwardingData);
-    pthread_detach(TCPForwarding);
+    pthread_detach(TCPForwarding);*/
 
 		threadData* SendAcksData = new threadData();
 		SendAcksData->handshakeMail = key;
@@ -198,9 +171,47 @@ int main()
     pthread_create(&ackSend,NULL,SendAcks,(void*)SendAcksData);
     pthread_detach(ackSend);
 	
+	
 		while(1)
 	{
-		DEBUG_MSG("Entering main receiver loop");
+		
+		
+		 char header[1];
+		server->server_read(&header,sizeof(header));
+		DEBUG_MSG("Header" << header[0]);
+		
+		if(header[0] == '0')
+		{
+		  Mailbox::mesg_name namePacket;
+		 server->server_read(&namePacket,sizeof(namePacket));
+		 // handshakeMail.sendName(namePacket.name,namePacket.id,namePacket.totalPack);
+		  
+		  		
+		
+		threadData* childsCopiedData = new threadData();
+		childsCopiedData->handshakeMail = key;
+		childsCopiedData->chunkMail = key2;
+		childsCopiedData->name = namePacket.name;
+		childsCopiedData->totalBytes = namePacket.totalPack;
+		childsCopiedData->id = namePacket.id;
+		
+		
+		//create a child to assemble the image
+        pthread_t thread;
+        pthread_create(&thread,NULL,child,(void*)childsCopiedData);
+        pthread_detach(thread);
+		  
+		  
+		  DEBUG_MSG("Name");
+		}
+		else
+		{
+		  Mailbox::mesg_buffer dataPacket;
+		  server->server_read(&dataPacket, sizeof(dataPacket));
+		  chunkMail.send(dataPacket.mtype, dataPacket.data);
+		  DEBUG_MSG("Chunk"<<dataPacket.mtype);
+		}
+		
 		//Waits for ack(5) non blocking meaning it will not stop waiting for a the message
       //NO NEED TO STOP ON FASE3
       	/*
@@ -211,7 +222,7 @@ int main()
 			
 		
 		//Receive mail type 4 TAKEN OVER BY INDEPENDENT THREAD
-      
+      /*
     	Mailbox::mesg_name name = handshakeMail.receiveName(false);//blocking
     		
 			//Sends ack(2) NOT NEEDED IN PHASE 3
@@ -231,9 +242,9 @@ int main()
         pthread_create(&thread,NULL,child,(void*)childsCopiedData);
         pthread_detach(thread);
 		
-		
+	
         //Checks if any child is done TAKEN OVER BY INDEPENDET THREAD
-      /*
+      
         Mailbox::mesg_ackEmisor test  = handshakeMail.receiveAckEmisor();
         if(test.boolean != 1)
 		handshakeMail.sendAck(test.id);
