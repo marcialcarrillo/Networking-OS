@@ -185,11 +185,11 @@ Mailbox::mesg_ackEmisor Mailbox::receiveAckEmisor()
 {
 	int id = msgget(this->key,0666 | IPC_CREAT);
 	mesg_ackEmisor recv;
-		if(msgrcv(id, &recv, sizeof(mesg_ackEmisor),6, IPC_NOWAIT) == -1)
+		if(msgrcv(id, &recv, sizeof(mesg_ackEmisor),6, 0) == -1)
     	{
 			if (errno != ENOMSG) 
 			{
-				   //perror("msgrcvNonBlock");
+				   perror("msgrcvNonBlock");
 				   exit(EXIT_FAILURE);
 			}
 			recv.boolean = 1;

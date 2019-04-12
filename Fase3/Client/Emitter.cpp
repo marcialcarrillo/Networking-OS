@@ -50,14 +50,14 @@ void* recvTcp(void* data)
 	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
 
 	while(1)
-	{ /*
+	{ 
 		//Waits for a image to be done
-		Mailbox::mesg_ack msg;
+		Mailbox::mesg_ackEmisor msg;
 		childsCopiedData->client->client_read(&msg,sizeof(msg));
 		//Server sends the id of the image and Emisor sends it to the contratista
-		handshakeMail.sendAck(msg.mtype);
-		cout<<"Recieve"<<endl;
-		*/
+		handshakeMail.sendAck(msg.id);
+		DEBUG_MSG("Sent a completed image signal to " << msg.id);
+		
 	}
 	
 	return NULL;

@@ -29,7 +29,7 @@ using namespace std;
 
 //Example debug message:s
 //DEBUG_MSG("Hello" << ' ' << "World!" << 1 );
-//DEBUG_MSG("")
+//DEBUG_MSG("");
 
 //************************ VERBOSE MODE ***********************************************//
 
@@ -49,12 +49,14 @@ struct threadData{
 void* child(void* data)
 {
 	
+	DEBUG_MSG("child id: ");	
 	threadData* childsCopiedData = (threadData*) data;
 	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
 	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
+	DEBUG_MSG("Child " << childsCopiedData->id << " successfully started");
 	
 	//Open file
-/*	
+	
 	string fileName = childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/")+1);
 	ofstream output_file(fileName, ios::binary);
 	
@@ -65,6 +67,7 @@ void* child(void* data)
 	vector<char> packetToAppend;
 	//char * myTemp;
 
+	DEBUG_MSG("Starting child " << childsCopiedData->id << " main packet writting loop");
 	for(int packageCounter= 0 ; packageCounter < numberOfComplete512BytesPackets ; packageCounter++) //loop until there is less or equal to 4 packets
 	{
 		Mailbox::mesg_buffer msg = chunkMail.receive(childsCopiedData->id,true); //retrives an initial packet
@@ -103,16 +106,18 @@ void* child(void* data)
 	int totatLeftoverBytes = ((leftOver128BytesPackets - 1) * 128) + lastPacketBytes; //calcultate how many bytes in TOTAL are left to write
 	output_file.write(retrievedPacket.data(), totatLeftoverBytes); //write them to file
 
-*/
+	DEBUG_MSG("Child " << childsCopiedData->id << " packet writting finished");
 	//Sends ack(id)
-//	handshakeMail.sendAckEmisor(childsCopiedData->id);
+	handshakeMail.sendAckEmisor(childsCopiedData->id);
 
 	//Exit file
-//	output_file.close();
-	
+	output_file.close();
+
+	DEBUG_MSG("Child " << childsCopiedData->id << " about to DIE and not delete inherited data and exit");
 	//delete(childsCopiedData);
 	
 	return NULL;
+	
 }
 
 
@@ -126,11 +131,9 @@ void* SendAcks(void* data)
   while(1)
   {
     ackPacket = handshakeMail.receiveAckEmisor();
-    if(ackPacket.boolean != 1)
-    {
-       childsCopiedData->server->server_send(&ackPacket, sizeof(ackPacket)); //the server wil ONLY send ackPackets, because of this no header is required, they will all be casted into an ack struct
-    }
-   
+		//the server wil ONLY send ackPackets, because of this no header is required, they will all be casted into an ack struct
+    childsCopiedData->server->server_send(&ackPacket, sizeof(ackPacket));
+
   }
    return NULL;
 }
@@ -161,15 +164,17 @@ int main()
    /* pthread_t TCPForwarding;
     pthread_create(&TCPForwarding,NULL,ReadTCP,(void*)TCPForwardingData);
     pthread_detach(TCPForwarding);*/
-
+		
 		threadData* SendAcksData = new threadData();
 		SendAcksData->handshakeMail = key;
 		SendAcksData->chunkMail = key2;
+		SendAcksData->server = server;
   
   	//Start the Ack Sender thread (from mailboxes to TCP)
     pthread_t ackSend;
     pthread_create(&ackSend,NULL,SendAcks,(void*)SendAcksData);
     pthread_detach(ackSend);
+		
 	
 	
 		while(1)
