@@ -57,7 +57,8 @@ void* child(void* data)
 	
 	//Open file
 	
-	string fileName = childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/")+1);
+	string fileName = "./output/";
+	fileName += childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/") + 1);
 	ofstream output_file(fileName, ios::binary);
 	
 	int numberOfComplete512BytesPackets = floor((double)childsCopiedData->totalBytes/(double)512);
