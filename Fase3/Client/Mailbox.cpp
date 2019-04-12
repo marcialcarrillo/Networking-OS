@@ -36,35 +36,11 @@ void Mailbox::send(int type, char *data)
     }
 }
 
-vector<char> Mailbox::receive(int type) //flag 0 = package contratista
-{
-	mesg_buffer recv;
-	if (msgrcv(this->mailboxId, &recv, sizeof(recv), type, 0) == -1)
-	{
-		if (errno != ENOMSG)
-		{
-			//perror("msgrcvId");
-			exit(EXIT_FAILURE);
-		}
-	}
-	//   char* test = (char*)malloc(128);
-	//   memcpy(test,recv.data,128);
-	char *test = recv.data;
-	vector<char> datavector(test, test + 128);
-
-	/*
-const char* values = recv.data;
-const char* end = values + strlen(values);
-datavector.insert( datavector.end(), values, end );
-	//vector<char> data;   
-	*/
-	return datavector;
-}
-
 //Needs to free the char*
-Mailbox::mesg_buffer Mailbox::receiveStruct(int type, bool block)
+Mailbox::mesg_buffer Mailbox::receive(int type, bool block)
 {
     mesg_buffer recv;
+    
     if (!block)
     {
         if (msgrcv(this->mailboxId, &recv, sizeof(recv), type, IPC_NOWAIT) == -1)
@@ -90,8 +66,6 @@ Mailbox::mesg_buffer Mailbox::receiveStruct(int type, bool block)
     return recv;
 }
 
-
-
 void Mailbox::sendName(const char *name, int id, long totalPack)
 {
     mesg_name package;
@@ -106,12 +80,14 @@ void Mailbox::sendName(const char *name, int id, long totalPack)
     }
 }
 //Return a string with the name plus the size of the total package datas
-Mailbox::mesg_name Mailbox::receiveNameStruct(bool block)
+Mailbox::mesg_name Mailbox::receiveName(bool block)
 {
+	int id = msgget(this->key,0666 | IPC_CREAT);
     mesg_name recv;
+
     if (!block)
     {
-        if (msgrcv(this->mailboxId, &recv, sizeof(recv), 4, 0) == -1)
+        if (msgrcv(id, &recv, sizeof(recv), 4, 0) == -1)
         {
             if (errno != ENOMSG)
             {
@@ -122,32 +98,22 @@ Mailbox::mesg_name Mailbox::receiveNameStruct(bool block)
     }
     else
     {
-        if (msgrcv(this->mailboxId, &recv, sizeof(recv), 4, IPC_NOWAIT) == -1)
+		
+        if (msgrcv(id, &recv, sizeof(recv), 4, IPC_NOWAIT) == -1)
         {
             if (errno != ENOMSG)
             {
                 //perror("msgrcv4");
                 exit(EXIT_FAILURE);
             }
+            recv.boolean = 1;
+        }
+        else
+        {
+			    recv.boolean = 0;
         }
     }
     return recv;
-}
-
-string Mailbox::receiveName()
-{
-	mesg_name recv;
-	if (msgrcv(this->mailboxId, &recv, sizeof(recv), 4, 0) == -1)
-	{
-		if (errno != ENOMSG)
-		{
-			//perror("msgrcv4");
-			exit(EXIT_FAILURE);
-		}
-	}
-	string copy(recv.name);
-	copy = copy + "$" + to_string(recv.totalPack) + "-" + to_string(recv.id);
-	return copy;
 }
 
 void Mailbox::sendAck(int type)
@@ -164,7 +130,7 @@ void Mailbox::sendAck(int type)
 }
 //if variable block is set to 1 and theres no message with the variable type then it wont wait for one. Otherwise it will wait for a message
 //Return 1 if theres no message to receive. otherwise return 0
-Mailbox::mesg_ack Mailbox::receiveAckStruct(int type, bool block)
+Mailbox::mesg_ack Mailbox::receiveAck(int type, bool block)
 {
     int id = msgget(this->key, 0666 | IPC_CREAT);
     mesg_ack recv;
@@ -178,7 +144,10 @@ Mailbox::mesg_ack Mailbox::receiveAckStruct(int type, bool block)
                 //perror("msgrcvNonBlock");
                 exit(EXIT_FAILURE);
             }
+            recv.boolean = 1;
         }
+        else
+          recv.boolean =0;
     }
     else
     {
@@ -193,4 +162,42 @@ Mailbox::mesg_ack Mailbox::receiveAckStruct(int type, bool block)
     }
 
     return recv;
+}
+
+
+void Mailbox::sendAckEmisor(int id)
+{
+	
+	mesg_ackEmisor package;
+	package.mtype = 6;
+	package.id = id;
+	if(msgsnd(this->mailboxId, &package, sizeof(mesg_ackEmisor),0) == -1)
+ 	{
+		//perror("msgsnd error");
+        exit(EXIT_FAILURE);
+		
+	}
+ 
+}
+
+//Return 0 if theres no message to receive. otherwise return id
+Mailbox::mesg_ackEmisor Mailbox::receiveAckEmisor()
+{
+	int id = msgget(this->key,0666 | IPC_CREAT);
+	mesg_ackEmisor recv;
+		if(msgrcv(id, &recv, sizeof(mesg_ackEmisor),6, IPC_NOWAIT) == -1)
+    	{
+			if (errno != ENOMSG) 
+			{
+				   //perror("msgrcvNonBlock");
+				   exit(EXIT_FAILURE);
+			}
+			recv.boolean = 1;
+		}
+		else
+		   recv.boolean = 0;	
+
+		
+	  
+	return recv;
 }

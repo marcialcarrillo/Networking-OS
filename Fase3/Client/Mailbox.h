@@ -22,6 +22,7 @@ class Mailbox
         long totalPack;
         char name[62];
         int id;
+        int boolean;
     };
 
     // struct for message ack
@@ -31,23 +32,32 @@ class Mailbox
         int boolean;
     };
 
+    // struct for message ack Emisor
+    struct mesg_ackEmisor
+    {
+        long mtype;
+        int boolean;
+        int id;
+    };
+
     Mailbox(key_t);
     ~Mailbox();
 
     //Send and receive chunks of the image
     void send(int, char *);
-	vector<char> receive(int);
-    mesg_buffer receiveStruct(int, bool);
+    mesg_buffer receive(int, bool);
 
     //Send and receive the name of the file
     void sendName(const char *, int, long);
-	string receiveName();
-    mesg_name receiveNameStruct(bool);
+    mesg_name receiveName(bool);
 
     //Send and receive ack
     void sendAck(int);
-	int receiveAck(int,int);
-    mesg_ack receiveAckStruct(int, bool);
+    mesg_ack receiveAck(int, bool);
+    
+   //Send and receive ackEmisor
+    void sendAckEmisor(int);
+    mesg_ackEmisor receiveAckEmisor();
 
   private:
     int mailboxId;
