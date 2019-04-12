@@ -9,13 +9,16 @@ class Mailbox
 {
   public:
     // structure to message a package
+    #pragma pack(1)
     struct mesg_buffer
     {
         long mtype;
         char data[128];
     };
+    #pragma pack(0)
 
-    // structure to message a name of file
+    // structure to message a name of file    
+    #pragma pack(1)
     struct mesg_name
     {
         long mtype;
@@ -24,21 +27,26 @@ class Mailbox
         int id;
         int boolean;
     };
+    #pragma pack(0)
 
     // struct for message ack
+    #pragma pack(1)
     struct mesg_ack
     {
         long mtype;
         int boolean;
     };
+    #pragma pack(0)
 
     // struct for message ack Emisor
+    #pragma pack(1)
     struct mesg_ackEmisor
     {
         long mtype;
         int boolean;
         int id;
     };
+    #pragma pack(0)
 
     Mailbox(key_t);
     ~Mailbox();

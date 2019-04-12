@@ -11,6 +11,7 @@ using namespace std;
 int main()
 {
     Server server;
+    buff.mtype = 777777;
     server.server_send(&buff, sizeof(buff));
     return 0;
 }

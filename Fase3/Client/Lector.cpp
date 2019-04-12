@@ -57,7 +57,7 @@ void contratista(string address, int id, Mailbox& chunkMail,Mailbox& handshakeMa
 	//Sends the name to the emisor
 	handshakeMail.sendName(name,id,totalBytes);
 	//Waits for the ack(2)
-	handshakeMail.receiveAck(2,false);
+	//handshakeMail.receiveAck(2,false);
 	
 	
 

@@ -34,17 +34,21 @@
 using namespace std;
 
 
-typedef struct threadsData{
-	Mailbox handshakeMail;
-	Mailbox chunkMail;
-	Client client;
-}threadData_t;
+struct threadData{
+	int handshakeMail;
+	int chunkMail;
+	Client* client;
+};
 
-pthread_mutex_t lock;
+pthread_mutex_t my_lock;
 
 
 void* recvTcp(void* data)
 {
+  threadData* childsCopiedData = (threadData*) data;
+	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
+	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
+
 	while(1)
 	{
 		//Waits for a image to be done
@@ -57,56 +61,61 @@ void* recvTcp(void* data)
 	return NULL;
 }
 
-void* sendChunk(void* temp)
+void* sendChunk(void* data)
 {
-  
-  threadsData* data = (threadsData*) temp;
+  threadData* childsCopiedData = (threadData*) data;
+	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
+	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
+
+
 	while(1) 
 	{
 		//Takes a package from the mailbox	
-    Mailbox::mesg_buffer msg = data->chunkMail.receive(0,false);
+    Mailbox::mesg_buffer msg = chunkMail.receive(0,false);
     
     //Creates the header
     char header[1];
     header[0] = '1';
     
-    //Mutex lock
-	pthread_mutex_lock(&lock);
+    //Mutex my_lock
+	pthread_mutex_lock(&my_lock);
     
     
     //Sends the 2 packs to the server. First the header
-    data->client.send(header,sizeof(header));
-    data->client.send(&msg,sizeof(msg));
+    childsCopiedData->client->client_send(header,sizeof(header));
+    childsCopiedData->client->client_send(&msg,sizeof(msg));
      
     //Mutex Unlock
-     pthread_mutex_unlock(&lock);
+     pthread_mutex_unlock(&my_lock);
 	}
 	
 	return NULL;
 }
 
-void* sendName(void* temp)
+void* sendName(void* data)
 {
-    threadsData* data = (threadsData*) temp;
+  threadData* childsCopiedData = (threadData*) data;
+	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
+	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
 	while(1) 
 	{
 		//Takes a package from the mailbox	
-    Mailbox::mesg_name msg = data->handshakeMail.receiveName(false);//Blocking
+    Mailbox::mesg_name msg = handshakeMail.receiveName(false);//Blocking
     
     //Creates the header
     char header[1];
     header[0] = '0';
     
-   	//Mutex lock
-   	pthread_mutex_lock(&lock);
+   	//Mutex my_lock
+   	pthread_mutex_lock(&my_lock);
     
     //Sends the 2 packs to the server. First the header
-    data->client.send(header,sizeof(header));
-    data->client.send(&msg,sizeof(msg));
+    childsCopiedData->client->client_send(header,sizeof(header));
+    childsCopiedData->client->client_send(&msg,sizeof(msg));
    
     
     //Mutex Unlock
-		pthread_mutex_unlock(&lock);
+		pthread_mutex_unlock(&my_lock);
 	}
 	
 	return NULL;
@@ -124,19 +133,19 @@ int main()
 	
 	
 	//Start Tcp Socket
-	// Client client();
-	//   client.start();
-	
+    Client* client = new Client();
+    //Client client();	
   
-    if (pthread_mutex_init(&lock, NULL) != 0)
+    if (pthread_mutex_init(&my_lock, NULL) != 0)
     {
         printf("\n mutex init failed\n");
         return 1;
     }
   
-  threadData_t* data = new threadData_t();
-  data->chunkMail = chunkMail;
+  threadData* data = new threadData();
   data->client = client;
+  data->handshakeMail = key;
+  data->chunkMail = key2;
   
   
 	//Starts the receive thread
@@ -157,6 +166,12 @@ int main()
         pthread_create(&sendNameThread,NULL,sendName,(void*)data);
         pthread_detach(sendNameThread);
 	  
-  
+while(1)
+{
+  /*hold process*/
+}
+
+  delete(client);
+
 	return 0;
 }

@@ -6,17 +6,18 @@
 #include <stdio.h>
 #include <queue>
 #include <stdlib.h>
-#include "Mailbox.h"
 #include <fstream>
 #include <unistd.h>
 #include <math.h>
 #include <vector>
 #include <pthread.h>
+
 #include "Server.h"
+#include "Mailbox.h"
 
 using namespace std;
 
-typedef struct threadData{
+struct threadData{
 	
 	queue <vector<char>> data;
 	int id;
@@ -24,13 +25,13 @@ typedef struct threadData{
 	long totalBytes;
 	int handshakeMail;
 	int chunkMail;
-  	Server* server;
+  Server* server;
 	
-}threadData_t;
+};
 
 void* child(void* data)
 {
-	threadData_t* childsCopiedData = (threadData_t*) data;
+	threadData* childsCopiedData = (threadData*) data;
 	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
 	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
 	
@@ -97,25 +98,25 @@ void* child(void* data)
 void* ReadTCP(void* data)
 {
 
-  threadData_t* childsCopiedData = (threadData_t*) data;
+  threadData* childsCopiedData = (threadData*) data;
   Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
   Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
   
   while(1)
   {
     char header[1];
-    childsCopiedData->server.read(&header,sizeof(header));
+    childsCopiedData->server->server_read(&header,sizeof(header));
 
     if(header[0] == 0)
     {
       Mailbox::mesg_name namePacket;
-      childsCopiedData->server.read(&namePacket,sizeof(namePacket));
+      childsCopiedData->server->server_read(&namePacket,sizeof(namePacket));
       handshakeMail.sendName(namePacket.name,namePacket.id,namePacket.totalPack);
   	}
     else
     {
       Mailbox::mesg_buffer dataPacket;
-      childsCopiedData->server.read(&dataPacket, sizeof(dataPacket));
+      childsCopiedData->server->server_read(&dataPacket, sizeof(dataPacket));
       chunkMail.send(dataPacket.mtype, dataPacket.data);
     }
 
@@ -126,16 +127,16 @@ void* ReadTCP(void* data)
 
 void* SendAcks(void* data)
 {
-  threadData_t* childsCopiedData = (threadData_t*) data;
+  threadData* childsCopiedData = (threadData*) data;
   Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
-  Mailbox::mesg_ack ackPacket;
+  Mailbox::mesg_ackEmisor ackPacket;
   
   while(1)
   {
-    ackPacket  = handshakeMail.receiveAckEmisor();
-    if(test.boolean != 1)
+    ackPacket = handshakeMail.receiveAckEmisor();
+    if(ackPacket.boolean != 1)
     {
-       childsCopiedData->server.send(&ackPacket, sizeof(ackPacket)); //the server wil ONLY send ackPackets, because of this no header is required, they will all be casted into an ack struct
+       childsCopiedData->server->server_send(&ackPacket, sizeof(ackPacket)); //the server wil ONLY send ackPackets, because of this no header is required, they will all be casted into an ack struct
     }
    
   }
@@ -152,19 +153,26 @@ int main()
 
 	key_t key2 = 0xb62074;
 	Mailbox chunkMail = Mailbox(key2); 
+
+		threadData* TCPForwardingData = new threadData();
+		TCPForwardingData->handshakeMail = key;
+		TCPForwardingData->chunkMail = key2;
 	
 	//Start the TCP forwarding thread (to mailboxes)
     pthread_t TCPForwarding;
-    pthread_create(&TCPForwarding,NULL,TCPForwarding,(void*)ReadTCP);
+    pthread_create(&TCPForwarding,NULL,ReadTCP,(void*)TCPForwardingData);
     pthread_detach(TCPForwarding);
+
+		threadData* SendAcksData = new threadData();
+		SendAcksData->handshakeMail = key;
+		SendAcksData->chunkMail = key2;
   
   	//Start the Ack Sender thread (from mailboxes to TCP)
     pthread_t ackSend;
-    pthread_create(&ackSend,NULL,ackSend,(void*)SendAcks);
+    pthread_create(&ackSend,NULL,SendAcks,(void*)SendAcksData);
     pthread_detach(ackSend);
 	
-	int workDone=0;
-	while(1)
+		while(1)
 	{
 		
 		//Waits for ack(5) non blocking meaning it will not stop waiting for a the message
@@ -184,8 +192,8 @@ int main()
 			//handshakeMail.sendAck(2);
 		
 		
-		//threadData_t childsCopiedData = new threadData_t;
-		threadData_t* childsCopiedData = new threadData_t();
+		//threadData childsCopiedData = new threadData;
+		threadData* childsCopiedData = new threadData();
 		childsCopiedData->handshakeMail = key;
 		childsCopiedData->chunkMail = key2;
 		childsCopiedData->name = name.name;
