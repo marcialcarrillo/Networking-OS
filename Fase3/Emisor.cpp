@@ -12,71 +12,87 @@
 #include <math.h>
 #include <vector>
 #include <pthread.h>
+#include <mutex>
 
 using namespace std;
 
-typedef struct threadData{
-	
-	queue <vector<char>> data;
-	int id;
-	string name;
-	long totalBytes;
-	int handshakeMail;
-	int chunkMail;
-	
+
+typedef struct threadsData{
+	Mailbox handshakeMail;
+	Mailbox chunkMail;
+	Client client;
 }threadData_t;
 
-void* child(void* data)
+pthread_mutex_t lock;
+
+
+void* recvTcp(void* data)
 {
-	threadData_t* childsCopiedData = (threadData_t*) data;
-	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
-	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
-	
-	//Open file
-
-	string fileName = "./output/";
-	fileName += childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/") + 1);
-	ofstream output_file(fileName, ios::binary);
-	
-	int numberOfComplete512BytesPackets = floor((double)childsCopiedData->totalBytes/(double)512);
-	int leftOver128BytesPackets = ceil((childsCopiedData->totalBytes % 512)/(double)128);
-
-	vector<char> retrievedPacket;
-	vector<char> packetToAppend;
-	//char * myTemp;
-	
-	for(int packageCounter= 0 ; packageCounter < numberOfComplete512BytesPackets ; packageCounter++) //loop until there is less or equal to 4 packets
+	while(1)
 	{
-		retrievedPacket = chunkMail.receive(childsCopiedData->id); //retrives an initial packet
-		for(size_t i = 0; i < 3; i++) //since we have guaranteed that there are at least other 3 packets, loop through them.
-		{
-			packetToAppend = chunkMail.receive(childsCopiedData->id); //take another packet
-			retrievedPacket.insert(retrievedPacket.end(),packetToAppend.begin(),packetToAppend.end()); //insert it at the end of the primary packet
-		}
+		//Waits for a image to be done
+		//Mailbox::mesg_ack msg = client.recieve();
 		
-
-		output_file.write(retrievedPacket.data(), 512); //write 512 bytes to to file
-
+		//Server sends the id of the image and Emisor sends it to the contratista
+		//handshakeMail.sendAck(msg.mtype);
 	}
-	//only 3 or less packets to process (or left from the loop above)
+	
+	return NULL;
+}
 
-	retrievedPacket = chunkMail.receive(childsCopiedData->id); //we know there is at least one package left so always take it out
-
-	for(int packageCounter= 0 ; packageCounter < leftOver128BytesPackets - 1; packageCounter++) // if any left, append them. 
-	{		
-		packetToAppend = chunkMail.receive(childsCopiedData->id); //take another packet
-		retrievedPacket.insert(retrievedPacket.end(),packetToAppend.begin(),packetToAppend.end()); //insert it at the end of the primary packet
+void* sendChunk(void* temp)
+{
+  
+  threadsData* data = (threadsData*) temp;
+	while(1) 
+	{
+		//Takes a package from the mailbox	
+    Mailbox::mesg_buffer msg = data->chunkMail.receive(0,false);
+    
+    //Creates the header
+    char header[1];
+    header[0] = '1';
+    
+    //Mutex lock
+	pthread_mutex_lock(&lock);
+    
+    
+    //Sends the 2 packs to the server. First the header
+    data->client.send(header,sizeof(header));
+    data->client.send(&msg,sizeof(msg));
+     
+    //Mutex Unlock
+     pthread_mutex_unlock(&lock);
 	}
+	
+	return NULL;
+}
 
-	int lastPacketBytes = childsCopiedData->totalBytes % 128; //from the last packet you only need some bytes, not all
-	int totatLeftoverBytes = ((leftOver128BytesPackets - 1) * 128) + lastPacketBytes; //calcultate how many bytes in TOTAL are left to write
-	output_file.write(retrievedPacket.data(), totatLeftoverBytes); //write them to file
-
-	//Sends ack(3)
-	handshakeMail.sendAck(3);
-
-	//Exit file
-	output_file.close();
+void* sendName(void* temp)
+{
+    threadsData* data = (threadsData*) temp;
+	while(1) 
+	{
+		//Takes a package from the mailbox	
+    Mailbox::mesg_name msg = data->handshakeMail.receiveName(false);//Blocking
+    
+    //Creates the header
+    char header[1];
+    header[0] = '0';
+    
+   	//Mutex lock
+   	pthread_mutex_lock(&lock);
+    
+    //Sends the 2 packs to the server. First the header
+    data->client.send(header,sizeof(header));
+    data->client.send(&msg,sizeof(msg));
+   
+    
+    //Mutex Unlock
+		pthread_mutex_unlock(&lock);
+	}
+	
+	return NULL;
 }
 
 
@@ -89,52 +105,41 @@ int main()
 	key_t key2 = 0xb62074;
 	Mailbox chunkMail = Mailbox(key2); 
 	
-	int workDone=0;
 	
-	while(workDone != 1)
-	{
-		
-		//Waits for ack(5) non blocking meaning it will not stop waiting for a the message
-		int checkMessage = handshakeMail.receiveAck(5,1);
-		if(checkMessage == 0)//Theres a message
-			workDone=1;
-		
-		//Receive mail type 4
-    	string dato = handshakeMail.receiveName();
-		//Sends ack(2)
-		handshakeMail.sendAck(2);
-		
-		
-		//threadData_t childsCopiedData = new threadData_t;
-		threadData_t* childsCopiedData = new threadData_t();
-		childsCopiedData->handshakeMail = key;
-		childsCopiedData->chunkMail = key2;
-		
-		//Splits the string to get the data "(name)($totalPacks-id)"
-		size_t index = dato.find_first_of("$");
-		childsCopiedData->name = dato.substr(0,index);
-		string temp = dato.substr(index+1);
-		size_t index2 = temp.find_first_of("-");
-		childsCopiedData->totalBytes = stol(temp.substr(0,index2));
-		childsCopiedData->id = stoi(temp.substr(index2+1));
-
-		//std::cout<<childsCopiedData.name<<" "<<ceil((double)childsCopiedData.totalBytes/(double)128)<<" "<<childsCopiedData.id<<endl;
-
-
-        pthread_t thread;
-        pthread_create(&thread,NULL,child,(void*)childsCopiedData);
-        pthread_detach(thread);
-/*
-		  pid_t forkStatus;
-		  forkStatus = fork();//Creates a new process
-		  if(forkStatus == 0)//If this is not the main process 
-		  {
-			child(childsCopiedData);
-			exit(0);
-		  }	
-*/
-
-
-    }	
+	//Start Tcp Socket
+	// Client client();
+	//   client.start();
+	
+  
+    if (pthread_mutex_init(&lock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+  
+  threadData_t* data = new threadData_t();
+  data->chunkMail = chunkMail;
+  data->client = client;
+  
+  
+	//Starts the receive thread
+     pthread_t recieveThread;
+        pthread_create(&recieveThread,NULL,recvTcp,(void*)data);
+        pthread_detach(recieveThread);
+	  
+	
+	
+	//Starts the sendChunks thread
+     pthread_t sendChunks;
+        pthread_create(&sendChunks,NULL,sendChunk,(void*)data);
+        pthread_detach(sendChunks);
+	  
+	
+		//Starts the sendName thread
+        pthread_t sendNameThread;
+        pthread_create(&sendNameThread,NULL,sendName,(void*)data);
+        pthread_detach(sendNameThread);
+	  
+  
 	return 0;
 }
