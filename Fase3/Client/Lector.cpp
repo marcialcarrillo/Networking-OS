@@ -16,6 +16,18 @@
 #define BUFFER_SIZE 512
 #define SUB_BUFFER_SIZE 128
 
+//Debug couts
+#define DEBUG //comment to turn off debug messages
+
+#ifdef DEBUG
+#define DEBUG_MSG(str) do { std::cout << str << std::endl; } while( false )
+#else
+#define DEBUG_MSG(str) do { } while ( false )
+#endif //DEBUG
+
+//Example debug message:
+//DEBUG_MSG("Hello" << ' ' << "World!" << 1 );
+
 using namespace std;
 
 
@@ -95,6 +107,7 @@ void contratista(string address, int id, Mailbox& chunkMail,Mailbox& handshakeMa
 int main(int x , char* argv[])
 {
 
+
 (void)x;
 std::string line = "find ";
 line += argv[1];  
@@ -139,12 +152,12 @@ while(file >> address)//While theres addresses to read
   }
 
 
-
+	
   pid_t forkStatus;
   forkStatus = fork();//Creates a new process
   if(forkStatus == 0)//If this is not the main process 
   {
-	  cout<<"Se creo id "<<contratistaId<<endl;
+		DEBUG_MSG("Se creo id " << contratistaId);
     contratista(address,contratistaId,chunkMail,handshakeMail);
     exit(0);
   }
