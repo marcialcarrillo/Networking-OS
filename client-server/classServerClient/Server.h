@@ -1,125 +1,83 @@
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <errno.h>
-#include <arpa/inet.h>
-
-using namespace std;
+#include <stdio.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <netinet/in.h>
+#include <string.h>
+#define PORT 8080
 
 class Server
 {
   private:
-    int createdSocket = 0, n = 0;
-    char package[1024];
-    struct sockaddr_in ipOfServer;
-    char ip[100];
-    bool problems = false;
-
-    void getData();
-    void set_up_socket();
+    int server_fd, new_socket, valread;
+    struct sockaddr_in address;
+    int opt = 1;
+    int addrlen = sizeof(address);
+    char buffer[1024] = {0};
 
   public:
-    // structure to message a package
-    struct mesg_buffer
-    {
-        long mtype;
-        char data[128];
-    };
-    // structure to message a name of file
-    struct mesg_name
-    {
-        long mtype;
-        long totalPack;
-        char name[62];
-        int id;
-    };
-    // struct for message ack
-    struct mesg_ack
-    {
-        long mtype;
-        int boolean;
-    };
-
     Server();
     ~Server();
 
-    void start();
-    void listen();
-    void talk(char *package);
+    bool stop = true;
+
+    void server_read(char* new_buffer, int new_buffer_size);
+    void server_send(char *package, int package_size);
 };
 
 Server::Server()
 {
-    this->getData();
-    // Setting with 0's in all the package length
-    memset(this->package, '0', sizeof(this->package));
-    //Looking for problems with the socket
-    if ((createdSocket = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    // Creating socket file descriptor
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
-        printf("Socket not created \n");
-        this->problems = true;
+        perror("socket failed");
+        exit(EXIT_FAILURE);
     }
-    this->set_up_socket();
+
+    // Forcefully attaching socket to the port 8080
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_port = htons(PORT);
+
+    // Forcefully attaching socket to the port 8080
+    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
+    if (listen(server_fd, 3) < 0)
+    {
+        perror("listen");
+        exit(EXIT_FAILURE);
+    }
+    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
+    {
+        perror("accept");
+        exit(EXIT_FAILURE);
+    }
 }
 
 Server::~Server()
 {
-    // Body of the destructor
 }
 
-void Server::getData()
+void Server::server_read(char* new_buffer, int new_buffer_size)
 {
-    FILE *file;
-    file = fopen("serverData.txt", "r");
-
-    //For the ip
-    memset(this->ip, '\0', sizeof(this->ip));
-    fgets(this->ip, sizeof(this->ip) + 2, file);
-
-    fclose(file);
-}
-
-// Setting important values to the TCP socket
-void Server::set_up_socket()
-{
-    // Setting up the information
-    this->ipOfServer.sin_family = AF_INET;            // Because we are using ipv4 address
-    this->ipOfServer.sin_port = htons(2017);          // Port number of the running server
-    this->ipOfServer.sin_addr.s_addr = inet_addr(ip); // Port of the Server
-
-    //Assigning a name to the Server socket
-    if (connect(createdSocket, (struct sockaddr *)&ipOfServer, sizeof(ipOfServer)) < 0)
-    { // If there is no Server socket connection this program is going to end
-        printf("Connection failed due to port and ip problems\n");
-        this->problems = true;
-    }
-}
-
-void Server::listen()
-{
-    // This will read from the outside
-    int n = read(createdSocket, package, sizeof(package) - 1);
-    this->package[n] = 0;
-    puts(package);
-}
-
-void Server::talk(char *package)
-{
-    // This will read from the outside
-    // read(createdSocket, package, sizeof(package) - 1);
-}
-
-//Start the listening by the Server
-void Server::start()
-{
-    if (!this->problems)
+    //this->valread = read(new_socket, buffer, 1024);
+    this->valread = read(new_socket, new_buffer, new_buffer_size);
+    if (valread)
     {
-        this->listen();
+        printf("%s\n", buffer);
     }
 }
 
+void Server::server_send(char *package, int package_size)
+{
+    send(new_socket, package, package_size, 0);
+    printf("servidor envió un paquete\n");
+}
