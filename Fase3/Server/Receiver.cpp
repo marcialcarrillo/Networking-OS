@@ -49,7 +49,7 @@ struct threadData{
 void* child(void* data)
 {
 	
-	DEBUG_MSG("child id: ");	
+	//DEBUG_MSG("child id: ");	
 	threadData* childsCopiedData = (threadData*) data;
 	Mailbox handshakeMail = Mailbox(childsCopiedData->handshakeMail);
 	Mailbox chunkMail = Mailbox(childsCopiedData->chunkMail);
@@ -57,8 +57,8 @@ void* child(void* data)
 	
 	//Open file
 	
-	string fileName = "./output/";
-	fileName += childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/") + 1);
+	//string fileName = "./output/";
+	string fileName = childsCopiedData->name.substr(childsCopiedData->name.find_last_of("/") + 1);
 	ofstream output_file(fileName, ios::binary);
 	
 	int numberOfComplete512BytesPackets = floor((double)childsCopiedData->totalBytes/(double)512);
@@ -68,7 +68,7 @@ void* child(void* data)
 	vector<char> packetToAppend;
 	//char * myTemp;
 
-	DEBUG_MSG("Starting child " << childsCopiedData->id << " main packet writting loop");
+	//DEBUG_MSG("Starting child " << childsCopiedData->id << " main packet writting loop");
 	for(int packageCounter= 0 ; packageCounter < numberOfComplete512BytesPackets ; packageCounter++) //loop until there is less or equal to 4 packets
 	{
 		Mailbox::mesg_buffer msg = chunkMail.receive(childsCopiedData->id,true); //retrives an initial packet
@@ -107,7 +107,7 @@ void* child(void* data)
 	int totatLeftoverBytes = ((leftOver128BytesPackets - 1) * 128) + lastPacketBytes; //calcultate how many bytes in TOTAL are left to write
 	output_file.write(retrievedPacket.data(), totatLeftoverBytes); //write them to file
 
-	DEBUG_MSG("Child " << childsCopiedData->id << " packet writting finished");
+	//DEBUG_MSG("Child " << childsCopiedData->id << " packet writting finished");
 	//Sends ack(id)
 	handshakeMail.sendAckEmisor(childsCopiedData->id);
 
@@ -208,7 +208,7 @@ int main()
         pthread_detach(thread);
 		  
 		  
-		  DEBUG_MSG("Name");
+		  DEBUG_MSG("Name"<<childsCopiedData->name );
 		}
 		else
 		{

@@ -17,7 +17,7 @@
 
 //************************ VERBOSE MODE ***********************************************//
 
-#define DEBUG //comment this line only to turn off debug messages
+//#define DEBUG //comment this line only to turn off debug messages
 
 #ifdef DEBUG
 #define DEBUG_MSG(str) do { std::cout << str << std::endl; } while( false )

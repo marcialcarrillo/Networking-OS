@@ -61,6 +61,8 @@ Client::~Client()
 void Client::client_read(void* new_buffer, int new_buffer_size)
 {
     valread = read(sock, new_buffer, new_buffer_size);
+      printf("Bytes send %d\n",valread);
+    
     if (valread < 1) //either EOF (0) or error (-1)
     {
         printf("\nError or EOF when reading from client_read()\n");
